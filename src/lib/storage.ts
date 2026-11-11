@@ -15,8 +15,20 @@ export const FILES_ROUTE_PREFIX = '/api/files/';
 
 const globalForFiles = globalThis as unknown as { neonFiles: Files | undefined };
 
+// Vercel reserves AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION for its own runtime,
+// so on Vercel the Neon storage credentials are provided as NEON_STORAGE_*.
+// Locally the AWS_* names written by `neon env pull` keep working.
+const env = process.env;
+const storageConfig = {
+  bucket: STORAGE_BUCKET,
+  endpoint: env.NEON_STORAGE_ENDPOINT || env.AWS_ENDPOINT_URL_S3,
+  region: env.NEON_STORAGE_REGION || env.AWS_REGION,
+  accessKeyId: env.NEON_STORAGE_ACCESS_KEY_ID || env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: env.NEON_STORAGE_SECRET_ACCESS_KEY || env.AWS_SECRET_ACCESS_KEY,
+};
+
 export const files: Files =
-  globalForFiles.neonFiles ?? new Files({ adapter: neon({ bucket: STORAGE_BUCKET }) });
+  globalForFiles.neonFiles ?? new Files({ adapter: neon(storageConfig) });
 
 if (process.env.NODE_ENV !== 'production') globalForFiles.neonFiles = files;
 
