@@ -15,7 +15,8 @@ export async function POST(request: Request) {
       items, 
       isCustomPc,
       paymentReceiptUrl,
-      paymentReceiptName
+      paymentReceiptName,
+      paymentMethod
     } = body;
 
     if (!customerName || !customerPhone || !items || items.length === 0) {
@@ -36,6 +37,7 @@ export async function POST(request: Request) {
         itemsJson: JSON.stringify(items),
         paymentReceiptUrl: paymentReceiptUrl || null,
         paymentReceiptName: paymentReceiptName || null,
+        paymentMethod: paymentMethod === 'STRIPE' ? 'STRIPE' : 'TRANSFER',
         status: 'PENDING',
       },
     });

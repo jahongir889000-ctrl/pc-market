@@ -18,6 +18,7 @@ export interface TelegramReceiptData {
   }>;
   paymentReceiptUrl?: string | null;
   paymentReceiptName?: string | null;
+  paidByCard?: boolean;
   createdAt: Date;
 }
 
@@ -43,6 +44,9 @@ export function generateTelegramReceiptMessage(data: TelegramReceiptData, lang: 
     }
     if (data.deliveryAddress) {
       msg += `📍 <b>Yetkazish:</b> ${data.deliveryAddress}\n`;
+    }
+    if (data.paidByCard) {
+      msg += `💳 <b>To'lov:</b> karta orqali to'langan (Stripe) ✅\n`;
     }
     if (data.paymentReceiptName) {
       msg += `📎 <b>To'lov kvitansiyasi:</b> ${data.paymentReceiptName} (Biriktirildi)\n`;
@@ -89,6 +93,9 @@ export function generateTelegramReceiptMessage(data: TelegramReceiptData, lang: 
   }
   if (data.deliveryAddress) {
     msg += `📍 <b>Адрес доставки:</b> ${data.deliveryAddress}\n`;
+  }
+  if (data.paidByCard) {
+    msg += `💳 <b>Оплата:</b> картой онлайн (Stripe) — ОПЛАЧЕНО ✅\n`;
   }
   if (data.paymentReceiptName) {
     msg += `📎 <b>Файл чека оплаты:</b> ${data.paymentReceiptName} (Прикреплен)\n`;
@@ -150,6 +157,7 @@ export async function sendReceiptToTelegram(orderId: string, targetChatId?: stri
     items,
     paymentReceiptUrl: order.paymentReceiptUrl,
     paymentReceiptName: order.paymentReceiptName,
+    paidByCard: order.paymentMethod === 'STRIPE' && Boolean(order.paidAt),
     createdAt: order.createdAt,
   };
 

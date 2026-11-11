@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useI18n } from '@/lib/i18n/context';
 import { useCart } from '@/lib/cart-context';
 import { 
@@ -22,7 +22,9 @@ import {
   File,
   X,
   Eye,
-  Check
+  Check,
+  CreditCard,
+  Lock
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -45,6 +47,51 @@ export default function CartPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [telegramDispatched, setTelegramDispatched] = useState(false);
+
+  // Payment method: card via Stripe Checkout, or bank transfer + receipt upload
+  const [paymentMethod, setPaymentMethod] = useState<'STRIPE' | 'TRANSFER'>('STRIPE');
+  const [stripeNotice, setStripeNotice] = useState<string | null>(null);
+  const [verifyingPayment, setVerifyingPayment] = useState(false);
+
+  // Handle return from Stripe Checkout (?stripe=success&session_id=... or ?stripe=cancel)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const result = params.get('stripe');
+    if (!result) return;
+    window.history.replaceState(null, '', '/cart');
+
+    if (result === 'cancel') {
+      setStripeNotice(
+        lang === 'ru'
+          ? 'Оплата отменена. Корзина сохранена — можно попробовать ещё раз или выбрать другой способ оплаты.'
+          : "To'lov bekor qilindi. Savat saqlandi — qayta urinib ko'ring yoki boshqa to'lov usulini tanlang."
+      );
+      return;
+    }
+
+    const sessionId = params.get('session_id');
+    if (result === 'success' && sessionId) {
+      setVerifyingPayment(true);
+      fetch(`/api/stripe/session?session_id=${encodeURIComponent(sessionId)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.paymentStatus === 'paid' && data.order) {
+            setCreatedOrder(data.order);
+            setTelegramDispatched(true);
+            clearCart();
+          } else {
+            setErrorMessage(
+              lang === 'ru'
+                ? 'Платёж ещё не подтверждён Stripe. Если деньги списались — заказ обновится автоматически.'
+                : "To'lov hali tasdiqlanmadi. Pul yechilgan bo'lsa, buyurtma avtomatik yangilanadi."
+            );
+          }
+        })
+        .catch(() => setErrorMessage('Network error'))
+        .finally(() => setVerifyingPayment(false));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [dispatchingTelegram, setDispatchingTelegram] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -82,7 +129,40 @@ export default function CartPage() {
     }
 
     setSubmitting(true);
+    setStripeNotice(null);
     try {
+      if (paymentMethod === 'STRIPE') {
+        // 1. Create the order (unpaid), 2. open Stripe Checkout for it
+        const orderRes = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customerName,
+            customerPhone,
+            customerTelegram,
+            deliveryAddress,
+            totalUzs: totalPrice,
+            items,
+            isCustomPc: items.some((i) => i.isCustomPc),
+            paymentMethod: 'STRIPE',
+          }),
+        });
+        const orderData = await orderRes.json();
+        if (!orderRes.ok || !orderData.success) throw new Error(orderData.error || 'Failed to submit order');
+
+        const checkoutRes = await fetch('/api/stripe/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId: orderData.order.id, lang }),
+        });
+        const checkoutData = await checkoutRes.json();
+        if (!checkoutRes.ok || !checkoutData.url) {
+          throw new Error(checkoutData.error || (lang === 'ru' ? 'Не удалось открыть оплату' : "To'lovni ochib bo'lmadi"));
+        }
+        window.location.href = checkoutData.url;
+        return; // keep the spinner while the browser navigates to Stripe
+      }
+
       let uploadedFileUrl: string | null = null;
       let uploadedFileName: string | null = null;
 
@@ -142,8 +222,9 @@ export default function CartPage() {
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'Network error');
-    } finally {
       setSubmitting(false);
+    } finally {
+      if (paymentMethod !== 'STRIPE') setSubmitting(false);
     }
   };
 
@@ -166,6 +247,17 @@ export default function CartPage() {
     }
   };
 
+  if (verifyingPayment) {
+    return (
+      <div className="max-w-xl mx-auto px-4 py-24 text-center space-y-4">
+        <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-sm font-semibold text-slate-700 dark:text-gray-300">
+          {lang === 'ru' ? 'Проверяем оплату в Stripe…' : "Stripe'da to'lov tekshirilmoqda…"}
+        </p>
+      </div>
+    );
+  }
+
   if (createdOrder) {
     const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'cybermarket_uz_bot';
     const telegramBotUrl = `https://t.me/${botUsername}?start=order_${createdOrder.orderNumber}`;
@@ -181,7 +273,11 @@ export default function CartPage() {
             {t.common.orderSuccess}
           </h1>
           <p className="text-slate-600 dark:text-gray-300 text-sm max-w-md mx-auto">
-            {lang === 'ru'
+            {createdOrder.paidAt
+              ? lang === 'ru'
+                ? 'Оплата картой прошла успешно. Заказ оплачен, чек отправлен менеджеру в Telegram!'
+                : "Karta orqali to'lov muvaffaqiyatli o'tdi. Buyurtma to'landi, chek menejerga Telegramda yuborildi!"
+              : lang === 'ru'
               ? 'Ваш заказ и квитанция об оплате зарегистрированы в базе данных. Электронный чек сформирован!'
               : 'Buyurtmangiz va to\'lov cheki muvaffaqiyatli saqlandi. Elektron kvitansiya tayyorlandi!'}
           </p>
@@ -197,9 +293,15 @@ export default function CartPage() {
               <span className="text-[10px] text-slate-500 dark:text-gray-400 uppercase font-mono block">Номер чека</span>
               <span className="text-xl font-black text-cyan-600 dark:text-cyan-300 font-mono tracking-wider">{createdOrder.orderNumber}</span>
             </div>
-            <span className="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-300 border border-amber-500/30 font-semibold font-mono">
-              В СБОРКЕ (PENDING)
-            </span>
+            {createdOrder.paidAt ? (
+              <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 font-semibold font-mono flex items-center gap-1">
+                <CreditCard className="w-3.5 h-3.5" /> ОПЛАЧЕНО (PAID)
+              </span>
+            ) : (
+              <span className="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-300 border border-amber-500/30 font-semibold font-mono">
+                В СБОРКЕ (PENDING)
+              </span>
+            )}
           </div>
 
           <div className="space-y-2.5 text-xs text-slate-700 dark:text-gray-300 font-sans">
@@ -329,6 +431,12 @@ export default function CartPage() {
           </button>
         )}
       </div>
+
+      {stripeNotice && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-sm font-medium">
+          {stripeNotice}
+        </div>
+      )}
 
       {items.length === 0 ? (
         <div className="py-24 text-center bg-white dark:cyber-panel rounded-3xl border border-slate-200 dark:border-white/10 max-w-2xl mx-auto space-y-4 shadow-sm">
@@ -519,7 +627,40 @@ export default function CartPage() {
                 />
               </div>
 
+              {/* PAYMENT METHOD */}
+              <div className="pt-2 space-y-2">
+                <span className="block text-xs font-bold text-slate-800 dark:text-gray-200">
+                  {lang === 'ru' ? 'Способ оплаты' : "To'lov usuli"}
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    { id: 'STRIPE', icon: CreditCard, title: lang === 'ru' ? 'Картой онлайн' : 'Karta orqali', sub: 'Visa • Mastercard • Stripe' },
+                    { id: 'TRANSFER', icon: UploadCloud, title: lang === 'ru' ? 'Перевод + чек' : "O'tkazma + chek", sub: 'Payme • Click • Uzum' },
+                  ] as const).map((m) => {
+                    const Icon = m.icon;
+                    const active = paymentMethod === m.id;
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setPaymentMethod(m.id)}
+                        className={`text-left p-3 rounded-2xl border transition-all ${
+                          active
+                            ? 'border-cyan-500 bg-cyan-500/10 ring-1 ring-cyan-500/40'
+                            : 'border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-black/30 hover:border-cyan-400'
+                        }`}
+                      >
+                        <Icon className={`w-5 h-5 mb-1 ${active ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-400'}`} />
+                        <span className="block text-xs font-bold text-slate-900 dark:text-white">{m.title}</span>
+                        <span className="block text-[10px] text-slate-500 dark:text-gray-400">{m.sub}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* PAYMENT RECEIPT FILE ATTACHMENT */}
+              {paymentMethod === 'TRANSFER' && (
               <div className="pt-2">
                 <label className="block text-xs font-bold text-slate-800 dark:text-gray-200 mb-1.5 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
@@ -579,6 +720,7 @@ export default function CartPage() {
                   </div>
                 )}
               </div>
+              )}
 
               <button
                 type="submit"
@@ -588,15 +730,28 @@ export default function CartPage() {
                 {submitting ? (
                   <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  <>
-                    <Send className="w-4 h-4" />
-                    <span>{t.cartPage.submitOrder}</span>
-                  </>
+                  paymentMethod === 'STRIPE' ? (
+                    <>
+                      <Lock className="w-4 h-4" />
+                      <span>
+                        {lang === 'ru' ? 'Оплатить картой' : "Karta bilan to'lash"} · {formatPrice(totalPrice)}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      <span>{t.cartPage.submitOrder}</span>
+                    </>
+                  )
                 )}
               </button>
 
               <p className="text-[11px] text-slate-500 dark:text-gray-400 text-center leading-relaxed">
-                Чек оплаты сохраняется в системе и автоматически пересылается менеджеру в Telegram.
+                {paymentMethod === 'STRIPE'
+                  ? lang === 'ru'
+                    ? 'Оплата проходит на защищённой странице Stripe. Данные карты не попадают на наш сайт.'
+                    : "To'lov Stripe'ning himoyalangan sahifasida amalga oshiriladi. Karta ma'lumotlari saytimizga tushmaydi."
+                  : 'Чек оплаты сохраняется в системе и автоматически пересылается менеджеру в Telegram.'}
               </p>
             </form>
           </div>
