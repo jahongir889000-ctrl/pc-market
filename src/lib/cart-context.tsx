@@ -28,6 +28,9 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | null>(null);
 
+/** localStorage key holding the Stripe Checkout Session id of a payment in progress. */
+export const STRIPE_PENDING_KEY = 'pc_market_stripe_pending';
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
 
@@ -38,6 +41,43 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // ignore
     }
+
+    // Keep every open tab in sync (e.g. the cart was emptied after payment in another tab)
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== 'pc_market_cart') return;
+      try {
+        setItems(e.newValue ? JSON.parse(e.newValue) : []);
+      } catch {
+        setItems([]);
+      }
+    };
+    window.addEventListener('storage', onStorage);
+
+    // A Stripe payment was started earlier: if it has been paid (even if the customer closed the
+    // tab before returning to the site), empty the cart.
+    let pendingSession: string | null = null;
+    try {
+      pendingSession = localStorage.getItem(STRIPE_PENDING_KEY);
+    } catch {
+      // ignore
+    }
+    if (pendingSession && !window.location.search.includes('stripe=')) {
+      fetch(`/api/stripe/session?session_id=${encodeURIComponent(pendingSession)}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (!data) return;
+          if (data.paymentStatus === 'paid') {
+            setItems([]);
+            localStorage.setItem('pc_market_cart', '[]');
+          }
+          if (data.paymentStatus === 'paid' || data.sessionStatus === 'expired') {
+            localStorage.removeItem(STRIPE_PENDING_KEY);
+          }
+        })
+        .catch(() => {});
+    }
+
+    return () => window.removeEventListener('storage', onStorage);
   }, []);
 
   const saveCart = (newItems: CartItem[]) => {

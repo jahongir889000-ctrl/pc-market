@@ -28,7 +28,7 @@ export async function GET(request: Request) {
         })
       : null;
 
-    return NextResponse.json({ paymentStatus: session.payment_status, order });
+    return NextResponse.json({ paymentStatus: session.payment_status, sessionStatus: session.status, order });
   } catch (error: any) {
     console.error('Stripe session lookup error:', error);
     return NextResponse.json({ error: 'Failed to verify payment' }, { status: 500 });

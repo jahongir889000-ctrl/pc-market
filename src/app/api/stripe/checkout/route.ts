@@ -51,7 +51,7 @@ export async function POST(request: Request) {
 
     await prisma.order.update({ where: { id: order.id }, data: { stripeSessionId: session.id } });
 
-    return NextResponse.json({ url: session.url });
+    return NextResponse.json({ url: session.url, sessionId: session.id });
   } catch (error: any) {
     console.error('Stripe checkout error:', error);
     return NextResponse.json({ error: error?.message || 'Failed to start payment' }, { status: 500 });

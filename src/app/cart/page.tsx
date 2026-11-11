@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useI18n } from '@/lib/i18n/context';
-import { useCart } from '@/lib/cart-context';
+import { STRIPE_PENDING_KEY, useCart } from '@/lib/cart-context';
 import { 
   ShoppingCart, 
   Trash2, 
@@ -71,6 +71,13 @@ export default function CartPage() {
 
     const sessionId = params.get('session_id');
     if (result === 'success' && sessionId) {
+      // Stripe only redirects to success_url after the payment went through: empty the cart right away
+      clearCart();
+      try {
+        localStorage.removeItem(STRIPE_PENDING_KEY);
+      } catch {
+        // ignore
+      }
       setVerifyingPayment(true);
       fetch(`/api/stripe/session?session_id=${encodeURIComponent(sessionId)}`)
         .then((res) => res.json())
@@ -158,6 +165,11 @@ export default function CartPage() {
         const checkoutData = await checkoutRes.json();
         if (!checkoutRes.ok || !checkoutData.url) {
           throw new Error(checkoutData.error || (lang === 'ru' ? 'Не удалось открыть оплату' : "To'lovni ochib bo'lmadi"));
+        }
+        try {
+          localStorage.setItem(STRIPE_PENDING_KEY, checkoutData.sessionId);
+        } catch {
+          // ignore
         }
         window.location.href = checkoutData.url;
         return; // keep the spinner while the browser navigates to Stripe
