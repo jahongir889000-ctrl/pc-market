@@ -1,0 +1,269 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #f4f8fc;
+  --foreground: #0b1220;
+  --neon: #22d3ee;
+  --neon-2: #d946ef;
+  --neon-3: #a3ff12;
+}
+
+.dark {
+  --background: #03060c;
+  --foreground: #e6f6ff;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-exo), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+  --font-display: var(--font-unbounded), var(--font-exo), sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  letter-spacing: 0.01em;
+}
+
+.dark h1 {
+  text-shadow: 0 0 32px rgba(34, 211, 238, 0.35);
+}
+
+/* ---------- Futuristic background ---------- */
+.cyber-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+  background:
+    radial-gradient(1200px 600px at 85% -10%, rgba(217, 70, 239, 0.08), transparent 60%),
+    radial-gradient(1000px 700px at 0% 0%, rgba(34, 211, 238, 0.1), transparent 60%),
+    var(--background);
+}
+.cyber-bg::before {
+  content: "";
+  position: absolute;
+  inset: -50%;
+  background-image:
+    linear-gradient(rgba(34, 211, 238, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.07) 1px, transparent 1px);
+  background-size: 56px 56px;
+  transform: perspective(900px) rotateX(62deg) translateY(10%);
+  transform-origin: center 70%;
+  mask-image: linear-gradient(to top, black 15%, transparent 65%);
+  animation: grid-move 14s linear infinite;
+}
+.cyber-bg::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 18%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.55), rgba(217, 70, 239, 0.55), transparent);
+  box-shadow: 0 0 40px 6px rgba(34, 211, 238, 0.15);
+}
+:root:not(.dark) .cyber-bg {
+  background:
+    radial-gradient(1000px 600px at 85% -10%, rgba(217, 70, 239, 0.07), transparent 60%),
+    radial-gradient(1000px 700px at 0% 0%, rgba(34, 211, 238, 0.12), transparent 60%),
+    var(--background);
+}
+:root:not(.dark) .cyber-bg::before {
+  background-image:
+    linear-gradient(rgba(14, 116, 144, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(14, 116, 144, 0.08) 1px, transparent 1px);
+}
+.cyber-orb {
+  position: absolute;
+  width: 520px;
+  height: 520px;
+  border-radius: 9999px;
+  filter: blur(90px);
+  opacity: 0.18;
+  animation: orb-float 18s ease-in-out infinite alternate;
+}
+@keyframes grid-move {
+  from { background-position: 0 0; }
+  to { background-position: 0 56px; }
+}
+@keyframes orb-float {
+  from { transform: translate(0, 0) scale(1); }
+  to { transform: translate(80px, 60px) scale(1.15); }
+}
+
+/* subtle CRT scanlines over the whole page (dark only) */
+.dark body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  background: repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 3px);
+  mix-blend-mode: overlay;
+}
+
+/* ---------- Glass panels ---------- */
+@utility cyber-panel {
+  background: linear-gradient(150deg, rgba(13, 24, 42, 0.72), rgba(6, 10, 20, 0.86));
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  box-shadow:
+    inset 0 1px 0 rgba(140, 240, 255, 0.08),
+    0 0 0 1px rgba(34, 211, 238, 0.06),
+    0 24px 60px -24px rgba(0, 0, 0, 0.85),
+    0 0 50px -20px rgba(34, 211, 238, 0.28);
+}
+
+@utility cyber-corners {
+  background-image:
+    linear-gradient(var(--neon), var(--neon)), linear-gradient(var(--neon), var(--neon)),
+    linear-gradient(var(--neon), var(--neon)), linear-gradient(var(--neon), var(--neon));
+  background-size: 18px 2px, 2px 18px, 18px 2px, 2px 18px;
+  background-position: top left, top left, bottom right, bottom right;
+  background-repeat: no-repeat;
+}
+
+@utility neon-text {
+  text-shadow: 0 0 12px rgba(34, 211, 238, 0.6);
+}
+
+@utility font-display {
+  font-family: var(--font-display);
+}
+
+@utility hud-scanlines {
+  background: repeating-linear-gradient(to bottom, rgba(34, 211, 238, 0.035) 0 1px, transparent 1px 4px);
+}
+
+/* Gradient neon title text */
+@utility text-neon-gradient {
+  background: linear-gradient(90deg, #67e8f9, #a78bfa 50%, #f0abfc);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---------- Neon glow on primary accents (dark mode) ---------- */
+.dark .bg-cyan-500,
+.dark .bg-cyan-400 {
+  box-shadow: 0 0 18px -2px rgba(34, 211, 238, 0.55);
+}
+.dark .bg-gradient-to-r.from-cyan-500,
+.dark .bg-gradient-to-tr.from-cyan-500 {
+  box-shadow: 0 0 24px -4px rgba(34, 211, 238, 0.6);
+}
+.dark [class*="border-cyan-500"] {
+  box-shadow: 0 0 22px -12px rgba(34, 211, 238, 0.7);
+}
+a,
+button {
+  transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+}
+.dark button:not(:disabled):hover,
+.dark a:hover {
+  filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.18));
+}
+
+/* ---------- Scrollbar & selection ---------- */
+::selection {
+  background: #22d3ee;
+  color: #000;
+}
+.dark ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.dark ::-webkit-scrollbar-track {
+  background: #03060c;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: linear-gradient(#0e7490, #7e22ce);
+  border-radius: 10px;
+  border: 2px solid #03060c;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cyber-bg::before,
+  .cyber-orb {
+    animation: none;
+  }
+}
+
+/* =====================================================================
+   LIGHT THEME REMAP
+   Many components were authored dark-only (text-white, bg-black/40, ...).
+   In light mode we remap those tokens to readable light-theme values.
+   Areas that must stay dark (hero, 3D scene, 2D schematic, image overlays)
+   are marked with .keep-dark.
+   ===================================================================== */
+:root:not(.dark) .keep-dark {
+  color-scheme: dark;
+}
+
+/* ---- Panels ---- */
+:root:not(.dark) .cyber-panel:not(.keep-dark, .keep-dark *) {
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.9), rgba(241, 247, 252, 0.85));
+  box-shadow:
+    0 0 0 1px rgba(14, 116, 144, 0.08),
+    0 18px 40px -24px rgba(15, 23, 42, 0.25),
+    0 0 40px -24px rgba(34, 211, 238, 0.35);
+}
+:root:not(.dark) :is(.bg-gray-900, [class~="bg-gray-900/90"], [class~="bg-[#0a0f19]"], [class~="bg-[#0e1422]"], [class~="bg-[#0e1420]"], [class~="bg-[#111726]/80"], [class~="bg-[#0e131d]/60"], [class~="bg-[#121929]"]):not(.keep-dark, .keep-dark *) {
+  background-color: #f1f5f9;
+}
+:root:not(.dark) :is([class~="bg-black/20"], [class~="bg-black/30"], [class~="bg-black/40"], [class~="bg-black/50"], [class~="bg-black/60"], [class~="bg-black/70"]):not(.keep-dark, .keep-dark *) {
+  background-color: rgba(241, 245, 249, 0.92);
+}
+:root:not(.dark) [class~="bg-white/5"]:not(.keep-dark, .keep-dark *) {
+  background-color: rgba(15, 23, 42, 0.04);
+}
+:root:not(.dark) :is([class~="bg-white/10"], [class~="hover:bg-white/10"]:hover, [class~="hover:bg-white/20"]:hover):not(.keep-dark, .keep-dark *) {
+  background-color: rgba(15, 23, 42, 0.08);
+}
+
+/* ---- Colored dark tints -> light tints ---- */
+:root:not(.dark) :is(.bg-cyan-950, [class~="bg-cyan-950/30"], [class~="bg-cyan-950/60"], [class~="bg-cyan-950/80"]):not(.keep-dark, .keep-dark *) { background-color: #ecfeff; }
+:root:not(.dark) :is(.bg-blue-950, [class~="bg-blue-950/20"], [class~="bg-blue-950/60"], [class~="bg-blue-950/80"]):not(.keep-dark, .keep-dark *) { background-color: #eff6ff; }
+:root:not(.dark) :is(.bg-emerald-950, [class~="bg-emerald-950/30"], [class~="bg-emerald-950/40"], [class~="bg-emerald-950/60"], [class~="bg-emerald-950/80"]):not(.keep-dark, .keep-dark *) { background-color: #ecfdf5; }
+:root:not(.dark) :is(.bg-amber-950, [class~="bg-amber-950/30"], [class~="bg-amber-950/40"], [class~="bg-amber-950/50"], [class~="bg-amber-950/60"], [class~="bg-amber-950/80"]):not(.keep-dark, .keep-dark *) { background-color: #fffbeb; }
+:root:not(.dark) :is(.bg-rose-950, [class~="bg-rose-950/10"], [class~="bg-rose-950/30"], [class~="bg-rose-950/60"], [class~="bg-rose-950/80"]):not(.keep-dark, .keep-dark *) { background-color: #fff1f2; }
+:root:not(.dark) :is([class~="bg-purple-950/40"], [class~="bg-purple-950/60"], [class~="bg-purple-950/80"], [class~="bg-indigo-950/60"]):not(.keep-dark, .keep-dark *) { background-color: #faf5ff; }
+
+/* ---- Borders ---- */
+:root:not(.dark) :is([class~="border-white/5"], [class~="border-white/10"]):not(.keep-dark, .keep-dark *) { border-color: rgba(15, 23, 42, 0.1); }
+:root:not(.dark) :is([class~="border-white/20"], [class~="border-white/30"]):not(.keep-dark, .keep-dark *) { border-color: rgba(15, 23, 42, 0.18); }
+
+/* ---- Text (skip elements sitting on solid/gradient color fills) ---- */
+:root:not(.dark) :is(.text-white, [class~="hover:text-white"]:hover):not(.keep-dark, .keep-dark *, [class*="bg-gradient-to"], [class*="bg-gradient-to"] *, .bg-cyan-500, .bg-cyan-500 *, .bg-cyan-600, .bg-cyan-600 *, .bg-blue-600, .bg-blue-600 *, .bg-emerald-500, .bg-emerald-500 *, .bg-emerald-600, .bg-emerald-600 *, .bg-rose-500, .bg-rose-500 *, .bg-rose-600, .bg-rose-600 *, .bg-red-500, .bg-red-500 *, .bg-red-600, .bg-red-600 *, .bg-purple-600, .bg-purple-600 *, .bg-indigo-600, .bg-indigo-600 *) {
+  color: #0f172a;
+}
+:root:not(.dark) :is(.text-gray-200, .text-gray-300, .text-slate-300):not(.keep-dark, .keep-dark *) { color: #334155; }
+:root:not(.dark) :is(.text-gray-400, .text-slate-400):not(.keep-dark, .keep-dark *) { color: #526077; }
+:root:not(.dark) :is(.text-cyan-200, .text-cyan-300, .text-cyan-400, [class~="text-cyan-100/50"], [class~="text-cyan-100/60"], [class~="text-cyan-200/80"], [class~="text-cyan-300/80"]):not(.keep-dark, .keep-dark *) { color: #0e7490; }
+:root:not(.dark) :is(.text-emerald-300, .text-emerald-400, [class~="text-emerald-200/70"]):not(.keep-dark, .keep-dark *) { color: #047857; }
+:root:not(.dark) :is(.text-amber-200, .text-amber-300, .text-amber-400):not(.keep-dark, .keep-dark *) { color: #b45309; }
+:root:not(.dark) :is(.text-rose-200, .text-rose-300, .text-rose-400, .text-red-400):not(.keep-dark, .keep-dark *) { color: #be123c; }
+:root:not(.dark) :is(.text-purple-300, .text-purple-400, .text-fuchsia-200):not(.keep-dark, .keep-dark *) { color: #7e22ce; }
+:root:not(.dark) :is(.text-blue-300, .text-blue-400):not(.keep-dark, .keep-dark *) { color: #1d4ed8; }
+:root:not(.dark) :is(.text-indigo-300, .text-indigo-400):not(.keep-dark, .keep-dark *) { color: #4338ca; }
+:root:not(.dark) .neon-text:not(.keep-dark, .keep-dark *) { text-shadow: none; }
+:root:not(.dark) :is(input, textarea, select):not(.keep-dark *)::placeholder { color: #94a3b8; }
+:root:not(.dark) .group:hover :is([class~="group-hover:text-cyan-300"], [class~="group-hover:text-cyan-400"]):not(.keep-dark, .keep-dark *) { color: #0891b2; }
